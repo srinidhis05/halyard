@@ -75,8 +75,16 @@ abstract public class SpinnakerService<T> implements HasServiceSettings<T> {
     return getType().getCanonicalName();
   }
 
+  public String getBaseCanonicalName() {
+    return getType().getBaseType().getCanonicalName();
+  }
+
   public String getSpinnakerStagingPath(String deploymentName) {
     return halconfigDirectoryStructure.getStagingPath(deploymentName).toString();
+  }
+
+  public String getSpinnakerStagingDependenciesPath(String deploymentName) {
+    return halconfigDirectoryStructure.getStagingDependenciesPath(deploymentName).toString();
   }
 
   public ServiceSettings getDefaultServiceSettings(DeploymentConfiguration deploymentConfiguration) {

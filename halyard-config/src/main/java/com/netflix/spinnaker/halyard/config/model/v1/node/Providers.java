@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.appengine.AppengineProvider;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.aws.AwsProvider;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.azure.AzureProvider;
+import com.netflix.spinnaker.halyard.config.model.v1.providers.cloudfoundry.CloudFoundryProvider;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.dcos.DCOSProvider;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.dockerRegistry.DockerRegistryProvider;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.ecs.EcsProvider;
@@ -29,7 +30,6 @@ import com.netflix.spinnaker.halyard.config.model.v1.providers.kubernetes.Kubern
 import com.netflix.spinnaker.halyard.config.model.v1.providers.openstack.OpenstackProvider;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.oracle.OracleBMCSProvider;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.oracle.OracleProvider;
-import com.netflix.spinnaker.halyard.config.problem.v1.ConfigProblemSetBuilder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -54,6 +54,7 @@ public class Providers extends Node implements Cloneable {
   @JsonProperty(access = Access.WRITE_ONLY)
   OracleBMCSProvider oraclebmcs = new OracleBMCSProvider();
   OracleProvider oracle = new OracleProvider();
+  CloudFoundryProvider cloudfoundry = new CloudFoundryProvider();
 
   @Override
   public String getNodeName() {
@@ -80,11 +81,6 @@ public class Providers extends Node implements Cloneable {
     nodes.add(OracleProvider.mergeOracleBMCSProvider(oracle, oraclebmcs));
 
     return NodeIteratorFactory.makeListIterator(nodes);
-  }
-
-  @Override
-  public void accept(ConfigProblemSetBuilder psBuilder, Validator v) {
-    v.validate(psBuilder, this);
   }
 
   public static Class<? extends Provider> translateProviderType(String providerName) {

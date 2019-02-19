@@ -1,16 +1,9 @@
 package com.netflix.spinnaker.halyard.config.model.v1.providers.dcos;
 
+import com.netflix.spinnaker.halyard.config.model.v1.node.*;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.containers.ContainerAccount;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import com.netflix.spinnaker.halyard.config.model.v1.node.Account;
-import com.netflix.spinnaker.halyard.config.model.v1.node.DeploymentConfiguration;
-import com.netflix.spinnaker.halyard.config.model.v1.node.LocalFile;
-import com.netflix.spinnaker.halyard.config.model.v1.node.Node;
-import com.netflix.spinnaker.halyard.config.model.v1.node.NodeIterator;
-import com.netflix.spinnaker.halyard.config.model.v1.node.NodeIteratorFactory;
-import com.netflix.spinnaker.halyard.config.model.v1.node.Validator;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.dockerRegistry.DockerRegistryProvider;
 import com.netflix.spinnaker.halyard.config.problem.v1.ConfigProblemSetBuilder;
 
@@ -21,11 +14,6 @@ import java.util.stream.Collectors;
 @EqualsAndHashCode(callSuper = true)
 public class DCOSAccount extends ContainerAccount {
   private List<ClusterCredential> clusters;
-
-  @Override
-  public void accept(ConfigProblemSetBuilder psBuilder, Validator v) {
-    v.validate(psBuilder, this);
-  }
 
   @Override
   public NodeIterator getChildren() {
@@ -56,13 +44,8 @@ public class DCOSAccount extends ContainerAccount {
   public static class ClusterCredential extends Node implements Cloneable {
     private final String name;
     private final String uid;
-    private final String password;
-    @LocalFile private final String serviceKeyFile;
-
-    @Override
-    public void accept(ConfigProblemSetBuilder psBuilder, Validator v) {
-      v.validate(psBuilder, this);
-    }
+    @Secret private final String password;
+    @LocalFile @SecretFile private final String serviceKeyFile;
 
     @Override
     public String getNodeName() {

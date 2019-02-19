@@ -22,8 +22,10 @@ import com.netflix.spinnaker.halyard.config.model.v1.node.DeploymentConfiguratio
 import com.netflix.spinnaker.halyard.config.model.v1.node.Features;
 import com.netflix.spinnaker.halyard.config.model.v1.node.Notifications;
 import com.netflix.spinnaker.halyard.config.model.v1.notifications.SlackNotification;
+import com.netflix.spinnaker.halyard.config.model.v1.notifications.TwilioNotification;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.appengine.AppengineProvider;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.azure.AzureProvider;
+import com.netflix.spinnaker.halyard.config.model.v1.providers.cloudfoundry.CloudFoundryProvider;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.dcos.DCOSProvider;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.aws.AwsAccount;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.aws.AwsProvider;
@@ -113,6 +115,7 @@ public class DeckProfileFactory extends RegistryBackedProfileFactory {
     bindings.put("features.appengineContainerImageUrlDeployments", Boolean.toString(features.getAppengineContainerImageUrlDeployments() != null ? features.getAppengineContainerImageUrlDeployments() : false));
     bindings.put("features.travis", Boolean.toString(features.getTravis() != null ? features.getTravis() : false));
     bindings.put("features.wercker", Boolean.toString(features.getWercker() != null ? features.getWercker() : false));
+    bindings.put("features.managedPipelineTemplatesV2UI", Boolean.toString(features.getManagedPipelineTemplatesV2UI() != null ? features.getManagedPipelineTemplatesV2UI() : false));
 
     // Configure Kubernetes
     KubernetesProvider kubernetesProvider = deploymentConfiguration.getProviders().getKubernetes();
@@ -165,12 +168,19 @@ public class DeckProfileFactory extends RegistryBackedProfileFactory {
     EcsProvider ecsProvider = deploymentConfiguration.getProviders().getEcs();
     bindings.put("ecs.default.account", ecsProvider.getPrimaryAccount());
 
+    // Configure CloudFoundry
+    CloudFoundryProvider cloudFoundryProvider = deploymentConfiguration.getProviders().getCloudfoundry();
+    bindings.put("cloudfoundry.default.account", cloudFoundryProvider.getPrimaryAccount());
+
     // Configure notifications
     bindings.put("notifications.enabled", notifications.isEnabled() + "");
 
     SlackNotification slackNotification = notifications.getSlack();
     bindings.put("notifications.slack.enabled", slackNotification.isEnabled() + "");
     bindings.put("notifications.slack.botName", slackNotification.getBotName());
+
+    TwilioNotification twilioNotification = notifications.getTwilio();
+    bindings.put("notifications.twilio.enabled", twilioNotification.isEnabled() + "");
 
     // Configure canary
     Canary canary = deploymentConfiguration.getCanary();

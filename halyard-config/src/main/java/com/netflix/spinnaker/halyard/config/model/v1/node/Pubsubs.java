@@ -19,7 +19,6 @@
 package com.netflix.spinnaker.halyard.config.model.v1.node;
 
 import com.netflix.spinnaker.halyard.config.model.v1.pubsub.google.GooglePubsub;
-import com.netflix.spinnaker.halyard.config.problem.v1.ConfigProblemSetBuilder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -38,11 +37,6 @@ public class Pubsubs extends Node implements Cloneable {
     return "pubsub";
   }
 
-  @Override
-  public NodeIterator getChildren() {
-    return NodeIteratorFactory.makeReflectiveIterator(this);
-  }
-
   public Boolean getEnabled() {
     NodeIterator pubsubNodes = getChildren();
     Pubsub pubsub;
@@ -55,11 +49,6 @@ public class Pubsubs extends Node implements Cloneable {
 
   public void setEnabled() {
     enabled = getEnabled();
-  }
-
-  @Override
-  public void accept(ConfigProblemSetBuilder psBuilder, Validator v) {
-    v.validate(psBuilder, this);
   }
 
   public static Class<? extends Pubsub> translatePubsubType(String pubsubName) {
@@ -83,6 +72,17 @@ public class Pubsubs extends Node implements Cloneable {
       return (Class<? extends Subscription>) Class.forName(subscriptionClassName);
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException("No subscription for class \"" + subscriptionClassName + "\" found", e);
+    }
+  }
+
+  public static Class<? extends Publisher> translatePublisherType(String pubsubName) {
+    Class<? extends Pubsub> pubsubClass = translatePubsubType(pubsubName);
+
+    String publisherClassName = pubsubClass.getName().replaceAll("Pubsub", "Publisher");
+    try {
+      return (Class<? extends Publisher>) Class.forName(publisherClassName);
+    } catch (ClassNotFoundException e) {
+      throw new IllegalArgumentException("No publisher for class \"" + publisherClassName + "\" found", e);
     }
   }
 }

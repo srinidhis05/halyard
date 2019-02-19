@@ -20,8 +20,7 @@ package com.netflix.spinnaker.halyard.config.model.v1.ci.jenkins;
 import com.netflix.spinnaker.halyard.config.model.v1.node.Master;
 import com.netflix.spinnaker.halyard.config.model.v1.node.NodeIterator;
 import com.netflix.spinnaker.halyard.config.model.v1.node.NodeIteratorFactory;
-import com.netflix.spinnaker.halyard.config.model.v1.node.Validator;
-import com.netflix.spinnaker.halyard.config.problem.v1.ConfigProblemSetBuilder;
+import com.netflix.spinnaker.halyard.config.model.v1.node.Secret;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -33,13 +32,8 @@ public class JenkinsMaster extends Master {
     return NodeIteratorFactory.makeEmptyIterator();
   }
 
-  @Override
-  public void accept(ConfigProblemSetBuilder psBuilder, Validator v) {
-    v.validate(psBuilder, this);
-  }
-
   private String address;
   private String username;
-  private String password;
+  @Secret private String password;
   private Boolean csrf;
 }

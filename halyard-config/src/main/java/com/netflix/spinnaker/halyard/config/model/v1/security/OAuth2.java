@@ -19,8 +19,7 @@ package com.netflix.spinnaker.halyard.config.model.v1.security;
 
 import com.netflix.spinnaker.halyard.config.model.v1.node.NodeIterator;
 import com.netflix.spinnaker.halyard.config.model.v1.node.NodeIteratorFactory;
-import com.netflix.spinnaker.halyard.config.model.v1.node.Validator;
-import com.netflix.spinnaker.halyard.config.problem.v1.ConfigProblemSetBuilder;
+import com.netflix.spinnaker.halyard.config.model.v1.node.Secret;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -30,11 +29,6 @@ import java.util.HashMap;
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class OAuth2 extends AuthnMethod {
-  @Override
-  public void accept(ConfigProblemSetBuilder psBuilder, Validator v) {
-    v.validate(psBuilder, this);
-  }
-
   @Override
   public String getNodeName() {
     return "oauth2";
@@ -145,7 +139,7 @@ public class OAuth2 extends AuthnMethod {
   @Data
   public static class Client {
     private String clientId;
-    private String clientSecret;
+    @Secret private String clientSecret;
     private String accessTokenUri;
     private String userAuthorizationUri;
     private String clientAuthenticationScheme;

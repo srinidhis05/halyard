@@ -20,18 +20,18 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.netflix.spinnaker.clouddriver.google.ComputeVersion;
 import com.netflix.spinnaker.clouddriver.google.security.GoogleNamedAccountCredentials;
 import com.netflix.spinnaker.halyard.config.config.v1.ArtifactSourcesConfig;
+import com.netflix.spinnaker.halyard.config.config.v1.secrets.SecretSessionManager;
 import com.netflix.spinnaker.halyard.config.model.v1.node.LocalFile;
-import com.netflix.spinnaker.halyard.config.model.v1.node.Validator;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.consul.ConsulConfig;
 import com.netflix.spinnaker.halyard.config.model.v1.providers.consul.SupportsConsul;
 import com.netflix.spinnaker.halyard.config.problem.v1.ConfigProblemSetBuilder;
-import com.netflix.spinnaker.halyard.config.validate.v1.util.ValidatingFileReader;
 import com.netflix.spinnaker.halyard.core.problem.v1.Problem;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,16 +47,14 @@ public class GoogleAccount extends CommonGoogleAccount implements Cloneable, Sup
   @LocalFile String userDataFile;
   private List<String> regions;
 
-  @Override
-  public void accept(ConfigProblemSetBuilder psBuilder, Validator v) {
-    v.validate(psBuilder, this);
-  }
+  @Autowired
+  private SecretSessionManager secretSessionManager;
 
   @JsonIgnore
   public GoogleNamedAccountCredentials getNamedAccountCredentials(String version, ConfigProblemSetBuilder p) {
     String jsonKey = null;
     if (!StringUtils.isEmpty(getJsonPath())) {
-      jsonKey = ValidatingFileReader.contents(p, getJsonPath());
+      jsonKey = secretSessionManager.validatingFileDecrypt(p, getJsonPath());
 
       if (jsonKey == null) {
         return null;

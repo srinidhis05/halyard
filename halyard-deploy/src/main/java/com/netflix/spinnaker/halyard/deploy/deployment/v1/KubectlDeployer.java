@@ -19,16 +19,22 @@
 package com.netflix.spinnaker.halyard.deploy.deployment.v1;
 
 import com.netflix.spinnaker.halyard.config.model.v1.providers.kubernetes.KubernetesAccount;
+import com.netflix.spinnaker.halyard.core.DaemonResponse;
 import com.netflix.spinnaker.halyard.core.RemoteAction;
+import com.netflix.spinnaker.halyard.core.problem.v1.Problem;
 import com.netflix.spinnaker.halyard.core.tasks.v1.DaemonTaskHandler;
 import com.netflix.spinnaker.halyard.deploy.services.v1.GenerateService;
 import com.netflix.spinnaker.halyard.deploy.spinnaker.v1.SpinnakerRuntimeSettings;
 import com.netflix.spinnaker.halyard.deploy.spinnaker.v1.service.ServiceSettings;
 import com.netflix.spinnaker.halyard.deploy.spinnaker.v1.service.SpinnakerService;
+import com.netflix.spinnaker.halyard.deploy.spinnaker.v1.service.SpinnakerService.Type;
 import com.netflix.spinnaker.halyard.deploy.spinnaker.v1.service.distributed.SidecarService;
 import com.netflix.spinnaker.halyard.deploy.spinnaker.v1.service.distributed.kubernetes.v2.KubectlServiceProvider;
+import com.netflix.spinnaker.halyard.deploy.spinnaker.v1.service.distributed.kubernetes.v2.KubernetesV2Executor;
 import com.netflix.spinnaker.halyard.deploy.spinnaker.v1.service.distributed.kubernetes.v2.KubernetesV2Service;
 import com.netflix.spinnaker.halyard.deploy.spinnaker.v1.service.distributed.kubernetes.v2.KubernetesV2Utils;
+
+import java.util.concurrent.TimeUnit;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -40,7 +46,8 @@ public class KubectlDeployer implements Deployer<KubectlServiceProvider,AccountD
   public RemoteAction deploy(KubectlServiceProvider serviceProvider,
       AccountDeploymentDetails<KubernetesAccount> deploymentDetails,
       GenerateService.ResolvedConfiguration resolvedConfiguration,
-      List<SpinnakerService.Type> serviceTypes) {
+      List<SpinnakerService.Type> serviceTypes,
+      boolean waitForCompletion) {
     List<KubernetesV2Service> services = serviceProvider.getServicesByPriority(serviceTypes);
     services.stream().forEach((service) -> {
       if (service instanceof SidecarService) {
@@ -59,25 +66,48 @@ public class KubectlDeployer implements Deployer<KubectlServiceProvider,AccountD
       if (settings.getSkipLifeCycleManagement() != null && settings.getSkipLifeCycleManagement()) {
         return;
       }
-      
-      DaemonTaskHandler.newStage("Deploying " + service.getServiceName() + " with kubectl");
 
-      KubernetesAccount account = deploymentDetails.getAccount();
-      String namespaceDefinition = service.getNamespaceYaml(resolvedConfiguration);
-      String serviceDefinition = service.getServiceYaml(resolvedConfiguration);
+      DaemonResponse.StaticRequestBuilder<Void> builder = new DaemonResponse.StaticRequestBuilder<>(
+          () -> {
+            DaemonTaskHandler.newStage("Deploying " + service.getServiceName() + " with kubectl");
 
-      if (!KubernetesV2Utils.exists(account, namespaceDefinition)) {
-        KubernetesV2Utils.apply(account, namespaceDefinition);
-      }
+            KubernetesAccount account = deploymentDetails.getAccount();
+            KubernetesV2Executor executor = new KubernetesV2Executor(DaemonTaskHandler.getJobExecutor(), account);
+            String namespaceDefinition = service.getNamespaceYaml(resolvedConfiguration);
+            String serviceDefinition = service.getServiceYaml(resolvedConfiguration);
 
-      if (!KubernetesV2Utils.exists(account, serviceDefinition)) {
-        KubernetesV2Utils.apply(account, serviceDefinition);
-      }
+            if (!executor.exists(namespaceDefinition)) {
+              executor.apply(namespaceDefinition);
+            }
 
-      String resourceDefinition = service.getResourceYaml(deploymentDetails, resolvedConfiguration);
-      DaemonTaskHandler.message("Running kubectl apply on the resource definition...");
-      KubernetesV2Utils.apply(account, resourceDefinition);
+            if (!executor.exists(serviceDefinition)) {
+              executor.apply(serviceDefinition);
+            }
+
+            String resourceDefinition = service.getResourceYaml(executor, deploymentDetails, resolvedConfiguration);
+            if (((SpinnakerService) service).getType().equals(Type.REDIS) && executor.exists(resourceDefinition)) {
+              // We do not want to bounce the Redis pod because user data will be lost.
+              DaemonTaskHandler.message("Redis deployment already exists... not redeploying...");
+            } else {
+              DaemonTaskHandler.message("Running kubectl apply on the resource definition...");
+              executor.apply(resourceDefinition);
+
+              if (waitForCompletion) {
+                DaemonTaskHandler.message("Waiting for service to be ready...");
+                while (!executor.isReady(service.getNamespace(settings), service.getServiceName())) {
+                  DaemonTaskHandler.safeSleep(TimeUnit.SECONDS.toMillis(5));
+                }
+              }
+            }
+            return null;
+          });
+      DaemonTaskHandler
+          .submitTask(builder::build, "Deploy " + service.getServiceName(), TimeUnit.MINUTES.toMillis(10));
     });
+
+    DaemonTaskHandler.message("Waiting on deployments to complete");
+    DaemonTaskHandler.reduceChildren(null, (t1, t2) -> null, (t1, t2) -> null)
+        .getProblemSet().throwifSeverityExceeds(Problem.Severity.WARNING);
 
     return new RemoteAction();
   }
@@ -148,10 +178,11 @@ public class KubectlDeployer implements Deployer<KubectlServiceProvider,AccountD
         return;
       }
       KubernetesAccount account = deploymentDetails.getAccount();
+      KubernetesV2Executor executor = new KubernetesV2Executor(DaemonTaskHandler.getJobExecutor(), account);
 
       DaemonTaskHandler.newStage("Deleting disabled service " + service.getServiceName() + " with kubectl");
       DaemonTaskHandler.message("Running kubectl delete on the resource, service, and secret definitions...");
-      KubernetesV2Utils.delete(account, service.getNamespace(settings), service.getServiceName());
+      executor.delete(service.getNamespace(settings), service.getServiceName());
     });
   }
 }

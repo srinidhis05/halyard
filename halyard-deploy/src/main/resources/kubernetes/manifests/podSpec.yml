@@ -13,7 +13,7 @@
   ],
   {% endif %}
 
-  {% if initContainers != null %}
+  {% if initContainers %}
   "initContainers": [
     {% for c in initContainers %}
     {{ c }} {% if not loop.last %} , {% endif %}
@@ -21,7 +21,7 @@
   ],
   {% endif %}
 
-  {% if hostAliases != null %}
+  {% if hostAliases %}
   "hostAliases": [
     {% for h in hostAliases %}
     {{ h }} {% if not loop.last %} , {% endif %}
@@ -29,7 +29,19 @@
   ],
   {% endif %}
 
+  {% if serviceAccountName != null %}
+  "serviceAccountName": {{ serviceAccountName }},
+  {% endif %}
+
   "terminationGracePeriodSeconds": {{ terminationGracePeriodSeconds }},
+
+  {% if nodeSelector %}
+    "nodeSelector": {
+      {% for key, value in nodeSelector.items() %}
+      "{{ key }}": "{{ value }}" {% if not loop.last %} , {% endif %}
+      {% endfor %}
+    },
+  {% endif %}
 
   "volumes": [
     {% for volume in volumes %}
